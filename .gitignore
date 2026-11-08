@@ -3,3 +3,8 @@ frontend/dist/
 .env
 .DS_Store
 *.log
+.vercel
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
