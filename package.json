@@ -1,0 +1,19 @@
+{
+  "name": "jobscout",
+  "version": "1.0.0",
+  "description": "Search the latest LinkedIn job postings by position.",
+  "main": "server/index.js",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "dev:client": "npm --prefix frontend run dev",
+    "install:all": "npm install && npm install --prefix frontend",
+    "build": "npm --prefix frontend run build",
+    "test": "node --test test/api.test.js",
+    "typecheck": "npm --prefix frontend run typecheck"
+  }
+}
