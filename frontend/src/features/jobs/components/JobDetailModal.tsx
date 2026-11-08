@@ -4,6 +4,7 @@ import { CloseIcon, CopyIcon, ExternalIcon } from "@/shared/components/Icons";
 import { useScrollLock } from "@/shared/hooks/useScrollLock";
 import { formatPostedTime } from "@/shared/lib/formatPostedTime";
 import { useJobDetails } from "../hooks/useJobDetails";
+import { jobSite } from "../lib/jobSite";
 import type { Job } from "../types";
 import { CompanyAvatar } from "./CompanyAvatar";
 
@@ -76,8 +77,8 @@ function ModalPanel({ job: base, saved, onClose, onToggleSave }: JobDetailModalP
   const description = isLoading
     ? null
     : error
-      ? `${error}\n\nYou can still read the full posting with the "Open on LinkedIn" button.`
-      : job.description || "No description available here. Open the posting on LinkedIn for full details.";
+      ? `${error}\n\nYou can still read the full posting with the "Open on ${jobSite(job)}" button.`
+      : job.description || `No description available here. Open the posting on ${jobSite(job)} for full details.`;
 
   const facts: [string, string][] = [
     ["Location", job.remote && !/^remote$/i.test(job.location) ? `${job.location} · Remote` : job.location],
@@ -162,7 +163,7 @@ function ModalPanel({ job: base, saved, onClose, onToggleSave }: JobDetailModalP
 
         <footer className="modal-actions">
           <a className="btn btn-orange btn-grow" href={job.url} target="_blank" rel="noopener noreferrer">
-            Open on LinkedIn <ExternalIcon size={16} />
+            Open on {jobSite(job)} <ExternalIcon size={16} />
           </a>
           <button type="button" className="btn btn-outline" aria-pressed={saved} onClick={() => onToggleSave(job)}>
             {saved ? "Saved" : "Save job"}

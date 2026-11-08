@@ -276,3 +276,30 @@ test("an unreadable static file returns an error instead of crashing the server"
     fs.chmodSync(file, 0o644);
   }
 });
+
+test("bdjobs provider maps search and details, applying the filters bdjobs ignores", async () => {
+  const bd = require("../server/providers/bdjobs");
+  const real = global.fetch;
+  const now = new Date().toISOString();
+  const old = new Date(Date.now() - 30 * 864e5).toISOString();
+  const row = (id, title, location, publishDate) => ({ Jobid: id, jobTitle: title, companyName: "Acme", location, publishDate, JobType: "FullTime", logoUrl: "" });
+  global.fetch = async (url) => ({
+    ok: true,
+    json: async () =>
+      String(url).includes("jobDetails")
+        ? { data: { JobFound: true, JobTitle: "Dev", JobDescription: "<p>Build things</p>", Deadline: "Dec 1, 2026", JobNature: "Full Time" } }
+        : { data: [row("1", "Dev", "Dhaka", now), row("2", "Old Dev", "Dhaka", old), row("3", "Dev", "Sylhet", now)], common: { totalpages: 3 } },
+  });
+  try {
+    const q = { position: "dev", location: "dhaka", type: "", remote: false, posted: "7d", page: 1, limit: 12 };
+    const { jobs, hasMore } = await bd.search(q);
+    assert.deepEqual(jobs.map((j) => j.id), ["bd-1"]); // old and wrong-location jobs dropped
+    assert.equal(jobs[0].url, "https://bdjobs.com/h/details/1?ln=1");
+    assert.equal(hasMore, true);
+    const d = await bd.details("1");
+    assert.match(d.description, /Build things/);
+    assert.equal(d.type, "Full-time");
+  } finally {
+    global.fetch = real;
+  }
+});

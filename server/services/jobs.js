@@ -1,10 +1,22 @@
 const config = require("../config");
 const { HttpError } = require("../lib/http");
 const { TTLCache } = require("../lib/cache");
+const { sortNewestFirst } = require("../lib/jobs");
 const providers = {
   api: require("../providers/rapidapi"),
   demo: require("../providers/demo"),
   scrape: require("../providers/linkedinScrape"),
+  bdjobs: require("../providers/bdjobs"),
+};
+
+// LinkedIn + bdjobs together. One failing site must not hide the other's jobs.
+providers.all = {
+  async search(query) {
+    const parts = await Promise.allSettled([providers.scrape.search(query), providers.bdjobs.search(query)]);
+    const ok = parts.filter((p) => p.status === "fulfilled").map((p) => p.value);
+    if (!ok.length) throw parts[0].reason;
+    return { jobs: sortNewestFirst(ok.flatMap((r) => r.jobs)), hasMore: ok.some((r) => r.hasMore) };
+  },
 };
 
 const TYPES = ["full-time", "part-time", "contract", "internship", "temporary"];
@@ -57,12 +69,15 @@ async function search(query) {
 
 // Full description for a scraped job (fetched on demand to keep request volume low).
 async function details(id) {
-  if (config.source !== "scrape") throw new HttpError(404, "Not found.");
-  if (!/^\d{5,15}$/.test(id)) throw new HttpError(400, "Invalid job id.");
+  const bd = id.startsWith("bd-"); // bdjobs ids are prefixed so they never clash with LinkedIn's
+  const source = bd ? "bdjobs" : ["scrape", "all"].includes(config.source) ? "scrape" : null;
+  const raw = bd ? id.slice(3) : id;
+  if (!source || (bd && !["bdjobs", "all"].includes(config.source))) throw new HttpError(404, "Not found.");
+  if (!/^\d{5,15}$/.test(raw)) throw new HttpError(400, "Invalid job id.");
   const cached = detailCache.get(id);
   if (cached) return cached;
   return dedupe(inflightDetails, id, async () => {
-    const result = await providers.scrape.details(id);
+    const result = await providers[source].details(raw);
     detailCache.set(id, result);
     return result;
   });

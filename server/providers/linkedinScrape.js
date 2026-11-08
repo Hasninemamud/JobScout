@@ -168,4 +168,4 @@ async function details(id) {
   return parsed;
 }
 
-module.exports = { search, details, parseSearchResults, parseJobDetails, applyFilters, parseRelativeTime, extractDivContent };
+module.exports = { search, details, htmlToText, parseSearchResults, parseJobDetails, applyFilters, parseRelativeTime, extractDivContent };

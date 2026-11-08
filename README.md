@@ -26,8 +26,10 @@ Other scripts: `npm test` (backend tests), `npm run typecheck` (frontend).
 
 | Source | What it is | Notes |
 | --- | --- | --- |
-| `scrape` (default with no key) | Reads LinkedIn's public, signed-out job pages | No key needed. |
+| `all` (default with no key) | LinkedIn + bdjobs merged, newest first | If one site fails, the other still shows. |
+| `scrape` | Reads LinkedIn's public, signed-out job pages | No key needed. |
 | `api` (default if `RAPIDAPI_KEY` is set) | Licensed provider on RapidAPI | Stable and permitted; paid/limited. |
+| `bdjobs` | bdjobs.com's public JSON (undocumented) | No key. Link and full details per job. Location/date/type filters applied per page by this app. |
 | `demo` | Offline sample data | Links are search pages, not real postings. |
 
 **About scraping.** Automated access violates LinkedIn's Terms of Service, and LinkedIn throttles it

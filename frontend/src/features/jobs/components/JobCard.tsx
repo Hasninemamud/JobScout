@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { BookmarkIcon, ExternalIcon, PinIcon } from "@/shared/components/Icons";
 import { companyHue } from "@/shared/lib/companyHue";
 import { formatPostedTime, isPostedWithinHours } from "@/shared/lib/formatPostedTime";
+import { jobSite } from "../lib/jobSite";
 import type { Job } from "../types";
 import { CompanyAvatar } from "./CompanyAvatar";
 
@@ -104,7 +105,7 @@ export const JobCard = memo(function JobCard({ job, index, saved, onOpen, onTogg
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
           >
-            View on LinkedIn <ExternalIcon size={14} />
+            View on {jobSite(job)} <ExternalIcon size={14} />
           </a>
         </div>
       </div>

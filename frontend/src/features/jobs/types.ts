@@ -1,6 +1,6 @@
 export type PostedWindow = "1h" | "24h" | "7d";
 export type JobType = "" | "full-time" | "part-time" | "contract" | "internship" | "temporary";
-type JobSource = "scrape" | "api" | "demo";
+type JobSource = "scrape" | "api" | "demo" | "bdjobs" | "all";
 
 export interface SearchFilters {
   position: string;
