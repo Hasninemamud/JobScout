@@ -41,8 +41,8 @@ export function JobsPage({ view, saved, isSaved, onToggleSave }: JobsPageProps) 
   const hasSearched = active.position.length > 0;
   const showResults = hasSearched || view === "saved";
   const filtersHint =
-    search.source === "scrape" && (active.type || active.remote)
-      ? "LinkedIn ignores job-type and remote filters for public searches, so these are matched on job titles. Some matching jobs may be missed."
+    (search.source === "scrape" || search.source === "all") && (active.type || active.remote)
+      ? "LinkedIn ignores job-type and remote filters for public searches, so on all sites these are matched on job titles. Some matching jobs may be missed."
       : null;
 
   return (

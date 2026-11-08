@@ -1,12 +1,12 @@
 const { HttpError } = require("../lib/http");
 const { matchesType, REMOTE_RE } = require("../lib/jobFilters");
 const { mapType, safeHttpUrl, sortNewestFirst } = require("../lib/jobs");
-const { htmlToText } = require("./linkedinScrape");
+const { htmlToText } = require("../lib/html");
 
 // bdjobs.com's own public search/detail JSON (what its website calls; no account or cookies).
 // NOTE: undocumented, so it can change without notice. Keep volume low; the service layer caches.
 const API = "https://api.bdjobs.com/jobs/api/v1";
-const WINDOW_MS = { "1h": 36e5, "24h": 864e5, "7d": 6048e5 };
+const WINDOW_MS = { "1h": 36e5, "24h": 864e5, "7d": 6048e5, "30d": 2592e6 };
 
 async function getJson(url) {
   let res;
@@ -43,11 +43,12 @@ async function search({ position, location, type, remote, posted, page, limit })
   const seen = new Set();
   const since = Date.now() - WINDOW_MS[posted];
   const loc = location.toLowerCase();
+  const wholeCountry = /^bangladesh$/.test(loc); // bdjobs places are towns, so a country matches them all
   // bdjobs' own location filter takes internal ids, so location, date, type and remote are applied here.
   const jobs = [...(body.premiumData || []), ...(body.data || [])]
     .filter((j) => j.Jobid && !seen.has(j.Jobid) && seen.add(j.Jobid))
     .filter((j) => Date.parse(j.publishDate) >= since)
-    .filter((j) => !loc || String(j.location).toLowerCase().includes(loc))
+    .filter((j) => !loc || wholeCountry || String(j.location).toLowerCase().includes(loc))
     .map(toJob)
     .filter((j) => (!remote || j.remote) && matchesType(j, type));
   // hasMore reflects bdjobs' own paging, since filtering may leave a page with few or no matches.
@@ -59,11 +60,12 @@ async function details(id) {
   const d = Array.isArray(data) ? data[0] : data;
   if (!d || d.JobFound === false || !d.JobTitle) throw new HttpError(404, "This job posting is no longer available.");
   const section = (title, html) => (html && String(html).trim() ? `${title}\n${htmlToText(String(html))}` : "");
+  const real = (v) => (v && String(v).trim() !== "--" ? v : null); // bdjobs sends "--" for "no value"
   const facts = [
-    d.Deadline && `Deadline: ${d.Deadline}`,
-    d.JobVacancies && `Vacancies: ${d.JobVacancies}`,
-    d.JobSalaryRangeText && `Salary: ${d.JobSalaryRangeText}`,
-    d.JobLocation && `Location: ${d.JobLocation}`,
+    real(d.Deadline) && `Deadline: ${d.Deadline}`,
+    real(d.JobVacancies) && `Vacancies: ${d.JobVacancies}`,
+    real(d.JobSalaryRangeText) && `Salary: ${d.JobSalaryRangeText}`,
+    real(d.JobLocation) && `Location: ${d.JobLocation}`,
   ].filter(Boolean).join("\n");
   const description = [
     facts,

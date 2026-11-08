@@ -1,4 +1,4 @@
-export type PostedWindow = "1h" | "24h" | "7d";
+export type PostedWindow = "1h" | "24h" | "7d" | "30d";
 export type JobType = "" | "full-time" | "part-time" | "contract" | "internship" | "temporary";
 type JobSource = "scrape" | "api" | "demo" | "bdjobs" | "all";
 
@@ -55,6 +55,7 @@ export const POSTED_OPTIONS: { value: PostedWindow; label: string }[] = [
   { value: "1h", label: "Past hour" },
   { value: "24h", label: "24 hours" },
   { value: "7d", label: "Past week" },
+  { value: "30d", label: "Past 30 days" },
 ];
 
 export const TYPE_OPTIONS: { value: JobType; label: string }[] = [

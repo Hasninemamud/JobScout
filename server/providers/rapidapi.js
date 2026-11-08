@@ -14,7 +14,7 @@ const PROVIDER_TYPES = {
 
 // Live LinkedIn postings through a RapidAPI provider (default: Fantastic.jobs).
 async function search({ position, location, type, remote, posted, page, limit }) {
-  const endpoint = { "1h": config.endpoint1h, "24h": config.endpoint24h }[posted] || config.endpoint7d;
+  const endpoint = { "1h": config.endpoint1h, "24h": config.endpoint24h }[posted] || config.endpoint7d; // shortcut: provider has no 30-day endpoint, so "30d" returns the last 7 days; add one if your plan has it
   const qs = new URLSearchParams({
     title_filter: `"${position.replace(/"/g, "")}"`,
     limit: String(limit),

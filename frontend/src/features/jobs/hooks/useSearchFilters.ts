@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_FILTERS, POSTED_OPTIONS, TYPE_OPTIONS, type SearchFilters } from "../types";
 
 function readFiltersFromUrl(): SearchFilters {
+  // A refresh starts clean; opening a shared link or using back/forward still restores the search.
+  const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+  if (nav?.type === "reload") return DEFAULT_FILTERS;
   const q = new URLSearchParams(window.location.search);
   const posted = q.get("posted");
   const type = q.get("type");

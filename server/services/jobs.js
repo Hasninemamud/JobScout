@@ -15,7 +15,7 @@ providers.all = {
     const parts = await Promise.allSettled([providers.scrape.search(query), providers.bdjobs.search(query)]);
     const ok = parts.filter((p) => p.status === "fulfilled").map((p) => p.value);
     if (!ok.length) throw parts[0].reason;
-    return { jobs: sortNewestFirst(ok.flatMap((r) => r.jobs)), hasMore: ok.some((r) => r.hasMore) };
+    return { jobs: sortNewestFirst(ok.flatMap((r) => r.jobs)), hasMore: ok.some((r) => r.hasMore), partial: ok.length < parts.length };
   },
 };
 
@@ -47,7 +47,7 @@ function parseQuery(sp) {
     location: clean(sp.get("location"), 100),
     type: TYPES.includes(type) ? type : "",
     remote: ["1", "true"].includes(sp.get("remote")),
-    posted: ["1h", "24h", "7d"].includes(sp.get("posted")) ? sp.get("posted") : "7d",
+    posted: ["1h", "24h", "7d", "30d"].includes(sp.get("posted")) ? sp.get("posted") : "7d",
     page: clamp(sp.get("page"), 1, 50, 1),
     limit: clamp(sp.get("limit"), 1, 25, 12),
   };
@@ -60,9 +60,9 @@ async function search(query) {
   if (cached) return cached;
 
   return dedupe(inflightSearches, key, async () => {
-    const { jobs, hasMore } = await providers[source].search(query);
-    const result = { source, demo: source === "demo", page: query.page, hasMore, jobs };
-    cache.set(key, result);
+    const { jobs, hasMore, partial } = await providers[source].search(query);
+    const result = { source, demo: source === "demo", page: query.page, hasMore, jobs, ...(partial && { partial }) };
+    if (!partial) cache.set(key, result); // a half-failed search must not hide a site for the whole TTL
     return result;
   });
 }

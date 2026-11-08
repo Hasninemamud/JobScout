@@ -58,7 +58,7 @@ export function HeroVisual() {
             y: { delay: 2, duration: 5, repeat: Infinity, ease: "easeInOut" },
           }}
         >
-          Direct LinkedIn links
+          Direct job links
         </motion.div>
       </motion.div>
 

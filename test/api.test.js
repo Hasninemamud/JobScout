@@ -303,3 +303,52 @@ test("bdjobs provider maps search and details, applying the filters bdjobs ignor
     global.fetch = real;
   }
 });
+
+test("all-source search survives one site failing and does not cache the partial result", async () => {
+  const jobsService = require("../server/services/jobs");
+  const real = global.fetch;
+  const now = new Date().toISOString();
+  let calls = 0;
+  global.fetch = async (url) => {
+    calls++;
+    if (String(url).includes("linkedin.com")) throw new Error("down");
+    return { ok: true, json: async () => ({ data: [{ Jobid: "9", jobTitle: "Dev", companyName: "Acme", location: "Dhaka", publishDate: now, JobType: "FullTime" }], common: { totalpages: 1 } }) };
+  };
+  process.env.JOB_SOURCE = "all";
+  try {
+    const q = jobsService.parseQuery(new URLSearchParams("position=partial-test&location=bangladesh"));
+    const first = await jobsService.search(q);
+    assert.deepEqual(first.jobs.map((j) => j.id), ["bd-9"]); // bdjobs kept; "bangladesh" matches the town "Dhaka"
+    assert.equal(first.partial, true);
+    const before = calls;
+    await jobsService.search(q);
+    assert.ok(calls > before, "partial result must not be served from cache");
+  } finally {
+    process.env.JOB_SOURCE = "demo";
+    global.fetch = real;
+  }
+});
+
+test("bd- details ids are only served when bdjobs is a source", async () => {
+  const { res } = await get("/api/jobs/bd-1553713/details"); // JOB_SOURCE=demo in tests
+  assert.equal(res.status, 404);
+});
+
+test("bdjobs details hide '--' placeholders", async () => {
+  const bd = require("../server/providers/bdjobs");
+  const real = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ data: { JobFound: true, JobTitle: "Dev", JobDescription: "<p>x</p>", JobVacancies: "--", Deadline: "Dec 1, 2026" } }) });
+  try {
+    const { description } = await bd.details("1");
+    assert.doesNotMatch(description, /Vacancies/);
+    assert.match(description, /Deadline: Dec 1, 2026/);
+  } finally {
+    global.fetch = real;
+  }
+});
+
+test("posted=30d is accepted and keeps older jobs that 7d drops", async () => {
+  const { jobs: month } = (await get("/api/jobs?position=designer&posted=30d&limit=25")).body;
+  const { jobs: week } = (await get("/api/jobs?position=designer&posted=7d&limit=25")).body;
+  assert.ok(month.length >= week.length);
+});

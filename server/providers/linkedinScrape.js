@@ -1,6 +1,7 @@
 const { HttpError } = require("../lib/http");
 const { matchesType, REMOTE_RE, TYPE_RULES } = require("../lib/jobFilters");
 const { mapType, safeHttpUrl, sortNewestFirst } = require("../lib/jobs");
+const { decode, stripTags, htmlToText } = require("../lib/html");
 
 // Reads LinkedIn's public, logged-in-free "guest" job pages (the same HTML fragments its own
 // job search page loads for signed-out visitors). No account or cookies are used.
@@ -16,7 +17,7 @@ const HEADERS = {
 // LinkedIn honours the date filter for signed-out visitors but silently ignores job-type and
 // remote filters (verified: identical results with and without them). So those two are applied
 // here instead: a keyword is added to the search and results are kept only if the title matches.
-const TPR = { "1h": "r3600", "24h": "r86400", "7d": "r604800" };
+const TPR = { "1h": "r3600", "24h": "r86400", "7d": "r604800", "30d": "r2592000" };
 // "17 minutes ago" / "2 days ago" -> ISO timestamp (LinkedIn's datetime attribute has no time of day).
 function parseRelativeTime(text, fallback) {
   const t = text || "";
@@ -37,32 +38,7 @@ function applyFilters(jobs, { type, remote }) {
 }
 
 // ---------- HTML helpers ----------
-const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "’", lsquo: "‘", ndash: "–", mdash: "—" };
-const decode = (s) =>
-  s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
-    if (e[0] === "#") {
-      const code = e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
-      return Number.isFinite(code) && code > 0 && code < 0x110000 ? String.fromCodePoint(code) : m;
-    }
-    return ENTITIES[e.toLowerCase()] ?? m;
-  });
-const stripTags = (s) => decode(s.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
 const pick = (s, re) => (s.match(re) || [])[1];
-
-// Convert LinkedIn's description HTML to readable plain text (the UI renders text, never raw HTML).
-function htmlToText(html) {
-  const text = html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|ul|ol|h[1-6])>/gi, "\n\n")
-    .replace(/<li[^>]*>/gi, "\n- ")
-    .replace(/<[^>]*>/g, "");
-  return decode(text)
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n")
-    .replace(/^- +/gm, "- ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
 
 // ---------- parsing (exported for tests) ----------
 function parseSearchResults(html) {
@@ -168,4 +144,4 @@ async function details(id) {
   return parsed;
 }
 
-module.exports = { search, details, htmlToText, parseSearchResults, parseJobDetails, applyFilters, parseRelativeTime, extractDivContent };
+module.exports = { search, details, parseSearchResults, parseJobDetails, applyFilters, parseRelativeTime, extractDivContent };

@@ -100,7 +100,7 @@ spring modal (bottom sheet on phones), and a scrolling marquee. `MotionConfig re
 ## API
 
 `GET /api/jobs?position=…` with optional `location`, `type` (full-time|part-time|contract|internship|temporary),
-`remote=1`, `posted` (1h|24h|7d), `page`, `limit` (max 25).
+`remote=1`, `posted` (1h|24h|7d|30d), `page`, `limit` (max 25).
 Also `GET /api/jobs/:id/details` (scrape source) returns the full description.
 Returns `{ source, demo, page, hasMore, jobs: [{ id, title, company, location, remote, type, postedAt, description, url, logo }] }`.
 
