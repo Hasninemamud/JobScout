@@ -42,9 +42,9 @@ function build(position) {
   });
 }
 
-async function search({ position, location, type, remote, posted, page, limit }) {
+async function search({ position, company, location, type, remote, posted, page, limit }) {
   const maxAgeH = { "1h": 1, "24h": 24, "30d": 24 * 30 }[posted] || 24 * 7;
-  let jobs = build(position).filter((j) => (Date.now() - new Date(j.postedAt)) / 3_600_000 <= maxAgeH);
+  let jobs = build(position || company).map((j) => (company ? { ...j, company } : j)).filter((j) => (Date.now() - new Date(j.postedAt)) / 3_600_000 <= maxAgeH);
   if (location) jobs = jobs.filter((j) => j.location.toLowerCase().includes(location.toLowerCase()));
   if (remote) jobs = jobs.filter((j) => j.remote);
   if (type) jobs = jobs.filter((j) => j.type.toLowerCase() === type);

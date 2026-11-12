@@ -17,11 +17,11 @@ const int = (v, d) => (Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : d);
 module.exports = {
   port: int(process.env.PORT, 3000),
   apiKey: process.env.RAPIDAPI_KEY || "",
-  // scrape = LinkedIn, bdjobs = bdjobs.com, all = both, api = RapidAPI provider, demo = sample data.
+  // scrape = LinkedIn, bdjobs = bdjobs.com, remote = remote job boards, all = all three, api = RapidAPI provider, demo = sample data.
   // Default: api when a key is set, otherwise all.
   get source() {
     const s = (process.env.JOB_SOURCE || "").toLowerCase();
-    if (["scrape", "api", "demo", "bdjobs", "all"].includes(s)) return s;
+    if (["scrape", "api", "demo", "bdjobs", "remote", "all"].includes(s)) return s;
     return process.env.RAPIDAPI_KEY ? "api" : "all";
   },
   apiHost: process.env.RAPIDAPI_HOST || "linkedin-job-search-api.p.rapidapi.com",

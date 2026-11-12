@@ -4,7 +4,7 @@ import { Reveal } from "@/shared/components/Reveal";
 const STEPS = [
   { n: "01", title: "Search a position", text: "Type a job title and, if you like, a city or country. Or tap one of the popular roles." },
   { n: "02", title: "Filter to what fits", text: "Pick how recent the posting should be, then narrow by job type or remote." },
-  { n: "03", title: "Open the posting", text: "Read the full details here, save the role for later, or jump straight to LinkedIn or bdjobs to apply." },
+  { n: "03", title: "Open the posting", text: "Read the full details here, save the role for later, or jump straight to the original site to apply." },
 ];
 
 export function HowItWorksSection() {

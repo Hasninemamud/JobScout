@@ -1,26 +1,12 @@
-const { HttpError } = require("../lib/http");
-const { matchesType, REMOTE_RE } = require("../lib/jobFilters");
+const { HttpError, fetchJson } = require("../lib/http");
+const { WINDOW_MS, matchesType, matchesCompany, matchesPosition, REMOTE_RE } = require("../lib/jobFilters");
 const { mapType, safeHttpUrl, sortNewestFirst } = require("../lib/jobs");
 const { htmlToText } = require("../lib/html");
 
 // bdjobs.com's own public search/detail JSON (what its website calls; no account or cookies).
 // NOTE: undocumented, so it can change without notice. Keep volume low; the service layer caches.
 const API = "https://api.bdjobs.com/jobs/api/v1";
-const WINDOW_MS = { "1h": 36e5, "24h": 864e5, "7d": 6048e5, "30d": 2592e6 };
-
-async function getJson(url) {
-  let res;
-  try {
-    res = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(12_000) });
-  } catch {
-    throw new HttpError(504, "bdjobs did not respond in time. Please try again.");
-  }
-  if (res.status === 429) throw new HttpError(503, "bdjobs is temporarily throttling requests. Wait a minute and try again.");
-  if (!res.ok) throw new HttpError(502, `bdjobs returned an unexpected response (${res.status}).`);
-  return res.json().catch(() => {
-    throw new HttpError(502, "bdjobs returned an unreadable response.");
-  });
-}
+const getJson = (url) => fetchJson(url, "bdjobs", { headers: { Accept: "application/json" } });
 
 const toJob = (j) => ({
   id: `bd-${j.Jobid}`,
@@ -37,8 +23,8 @@ const toJob = (j) => ({
   url: `https://bdjobs.com/h/details/${j.Jobid}?ln=1`,
 });
 
-async function search({ position, location, type, remote, posted, page, limit }) {
-  const qs = new URLSearchParams({ keyword: position, pg: String(page), rpp: String(limit) });
+async function search({ position, company, location, type, remote, posted, page, limit }) {
+  const qs = new URLSearchParams({ keyword: company || position, pg: String(page), rpp: String(limit) });
   const body = await getJson(`${API}/JobSearch/GetJobSearch?${qs}`);
   const seen = new Set();
   const since = Date.now() - WINDOW_MS[posted];
@@ -50,7 +36,9 @@ async function search({ position, location, type, remote, posted, page, limit })
     .filter((j) => Date.parse(j.publishDate) >= since)
     .filter((j) => !loc || wholeCountry || String(j.location).toLowerCase().includes(loc))
     .map(toJob)
-    .filter((j) => (!remote || j.remote) && matchesType(j, type));
+    .filter((j) => (!remote || j.remote) && matchesType(j, type) && matchesCompany(j, company))
+    // bdjobs matches ANY search word (in titles, skills, descriptions), so keep only titles with every word.
+    .filter((j) => matchesPosition(j, position));
   // hasMore reflects bdjobs' own paging, since filtering may leave a page with few or no matches.
   return { jobs: sortNewestFirst(jobs), hasMore: page < Number(body.common?.totalpages || 0) && page < 40 };
 }

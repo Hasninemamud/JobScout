@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { motion } from "framer-motion";
 import { AlertIcon, BookmarkIcon, SearchIcon } from "@/shared/components/Icons";
 import { scrollToId } from "@/shared/lib/scrollToId";
 import type { Job } from "./types";
@@ -9,6 +8,7 @@ import { JobDetailModal } from "./components/JobDetailModal";
 import { JobGrid } from "./components/JobGrid";
 import { JobSkeletonGrid } from "./components/JobSkeletonGrid";
 import { Notice } from "./components/Notice";
+import { Pagination } from "./components/Pagination";
 import { PopularSearches } from "./components/PopularSearches";
 import { ResultsHeader } from "./components/ResultsHeader";
 import { SearchPanel } from "./components/SearchPanel";
@@ -29,16 +29,29 @@ export function JobsPage({ view, saved, isSaved, onToggleSave }: JobsPageProps) 
   const search = useJobSearch(active);
   const [openJob, setOpenJob] = useState<Job | null>(null);
   const closeJob = useCallback(() => setOpenJob(null), []);
+  // The page number belongs to one search: a new search or filter starts again at page 1.
+  const searchKey = JSON.stringify(active);
+  const [pageState, setPageState] = useState({ key: searchKey, n: 1 });
+  const page = pageState.key === searchKey ? pageState.n : 1;
+  const goToPage = (n: number) => {
+    setPageState({ key: searchKey, n });
+    scrollToId("results");
+  };
+  const nextPage = () => {
+    if (page < search.pages.length) return goToPage(page + 1);
+    void search.loadMore().then((r) => !r.isError && goToPage(page + 1));
+  };
+  const pageJobs = search.pages[page - 1] ?? [];
 
   const runSearch = (patch?: Parameters<typeof submit>[0]) => {
     const position = (patch?.position ?? draft.position).trim();
     if (!submit(patch)) return;
-    addRecent(position);
+    if (position) addRecent(position);
     // The results section mounts on the next render; give it a moment, then bring it into view.
     setTimeout(() => scrollToId("results"), 80);
   };
 
-  const hasSearched = active.position.length > 0;
+  const hasSearched = active.position.length > 0 || active.company.length > 0;
   const showResults = hasSearched || view === "saved";
   const filtersHint =
     (search.source === "scrape" || search.source === "all") && (active.type || active.remote)
@@ -67,7 +80,7 @@ export function JobsPage({ view, saved, isSaved, onToggleSave }: JobsPageProps) 
             ) : (
               <>
                 <ResultsHeader
-                  title={`${active.position}${active.location ? ` in ${active.location}` : ""}`}
+                  title={`${active.position || "Jobs"}${active.company ? ` at ${active.company}` : ""}${active.location ? ` in ${active.location}` : ""}`}
                   count={!search.isLoading && !search.error ? search.jobs.length : null}
                   suffix="jobs loaded"
                 />
@@ -88,32 +101,32 @@ export function JobsPage({ view, saved, isSaved, onToggleSave }: JobsPageProps) 
                     message={search.error}
                     action={{ label: "Try again", onClick: search.retry }}
                   />
-                ) : search.jobs.length === 0 ? (
+                ) : pageJobs.length === 0 ? (
                   <EmptyState
                     icon={<SearchIcon size={28} />}
                     title={search.hasMore ? "No matches on this page" : "No jobs found"}
                     message={
                       search.hasMore
-                        ? "Nothing here fit your filters yet. Use “Load more jobs” to keep looking."
+                        ? "Nothing here fit your filters yet. Use “Next” to keep looking."
                         : active.posted === "1h"
                           ? "Nothing was posted in the last hour. Try “Past 24 hours”, or a broader title."
                           : "Try a broader title, remove the location, or widen the date range."
                     }
                   />
                 ) : (
-                  <JobGrid jobs={search.jobs} isSaved={isSaved} onOpen={setOpenJob} onToggleSave={onToggleSave} />
+                  <JobGrid jobs={pageJobs} isSaved={isSaved} onOpen={setOpenJob} onToggleSave={onToggleSave} />
                 )}
 
-                {search.hasMore && !search.isLoading && (
-                  <motion.div className="load-more" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    {search.loadMoreError && (
-                      <p className="load-more-error" role="alert">{search.loadMoreError}</p>
-                    )}
-                    <button type="button" className="btn btn-dark" onClick={search.loadMore} disabled={search.isLoadingMore}>
-                      {search.isLoadingMore && <span className="spinner" aria-hidden="true" />}
-                      {search.isLoadingMore ? "Loading" : search.loadMoreError ? "Try again" : "Load more jobs"}
-                    </button>
-                  </motion.div>
+                {!search.isLoading && !search.error && (
+                  <Pagination
+                    page={page}
+                    loadedPages={search.pages.length}
+                    hasMore={search.hasMore}
+                    isLoading={search.isLoadingMore}
+                    error={search.loadMoreError}
+                    onPage={goToPage}
+                    onNext={nextPage}
+                  />
                 )}
               </>
             )}

@@ -42,6 +42,21 @@ export function SearchPanel({ draft, isSearching, recent, onChange, onFilter, on
         </label>
 
         <label className="panel-field">
+          <span className="panel-label">Company</span>
+          <span className="panel-control">
+            <input
+              type="text"
+              name="company"
+              placeholder="e.g. Google (optional)"
+              maxLength={100}
+              autoComplete="off"
+              value={draft.company}
+              onChange={(e) => onChange({ company: e.target.value })}
+            />
+          </span>
+        </label>
+
+        <label className="panel-field">
           <span className="panel-label">Location</span>
           <span className="panel-control">
             <input

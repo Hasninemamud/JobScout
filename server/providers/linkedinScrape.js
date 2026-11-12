@@ -1,5 +1,5 @@
-const { HttpError } = require("../lib/http");
-const { matchesType, REMOTE_RE, TYPE_RULES } = require("../lib/jobFilters");
+const { HttpError, fetchText } = require("../lib/http");
+const { matchesType, matchesCompany, REMOTE_RE, TYPE_RULES } = require("../lib/jobFilters");
 const { mapType, safeHttpUrl, sortNewestFirst } = require("../lib/jobs");
 const { decode, stripTags, htmlToText } = require("../lib/html");
 
@@ -29,10 +29,10 @@ function parseRelativeTime(text, fallback) {
 }
 
 // Apply the filters LinkedIn ignores. Type labels are only set when the title confirms them.
-function applyFilters(jobs, { type, remote }) {
+function applyFilters(jobs, { type, remote, company }) {
   let out = jobs.map((j) => ({ ...j, remote: REMOTE_RE.test(`${j.title} ${j.location}`) }));
   if (remote) out = out.filter((j) => j.remote);
-  out = out.filter((j) => matchesType(j, type));
+  out = out.filter((j) => matchesType(j, type) && matchesCompany(j, company));
   // Cards carry no type, so a label is only set when the title confirmed one.
   return TYPE_RULES[type] ? out.map((j) => ({ ...j, type: mapType(type) })) : out;
 }
@@ -102,28 +102,10 @@ function parseJobDetails(html) {
 }
 
 // ---------- network ----------
-async function fetchHtml(url) {
-  let res;
-  try {
-    res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(12_000) });
-  } catch {
-    throw new HttpError(504, "LinkedIn did not respond in time. Please try again.");
-  }
-  if (res.status === 429 || res.status === 999) {
-    throw new HttpError(503, "LinkedIn is temporarily throttling requests from this server. Wait a minute and try again.");
-  }
-  if (!res.ok) throw new HttpError(502, `LinkedIn returned an unexpected response (${res.status}).`);
-  try {
-    return await res.text();
-  } catch (err) {
-    throw err?.name === "TimeoutError"
-      ? new HttpError(504, "LinkedIn did not respond in time. Please try again.")
-      : new HttpError(502, "LinkedIn returned an unreadable response.");
-  }
-}
+const fetchHtml = (url) => fetchText(url, "LinkedIn", { headers: HEADERS, throttled: [429, 999] });
 
-async function search({ position, location, type, remote, posted, page }) {
-  const keywords = [position, TYPE_RULES[type]?.keyword, remote ? "remote" : ""].filter(Boolean).join(" ");
+async function search({ position, company, location, type, remote, posted, page }) {
+  const keywords = [position, company, TYPE_RULES[type]?.keyword, remote ? "remote" : ""].filter(Boolean).join(" ");
   const qs = new URLSearchParams({
     keywords,
     location,
@@ -135,7 +117,7 @@ async function search({ position, location, type, remote, posted, page }) {
   const raw = parseSearchResults(await fetchHtml(`${BASE}/seeMoreJobPostings/search?${qs}`));
   // hasMore reflects LinkedIn's raw page size, since filtering may leave a page with few or no matches.
   // LinkedIn's "most recent" ordering is only approximate, so order by the posted time it reports.
-  return { jobs: sortNewestFirst(applyFilters(raw, { type, remote })), hasMore: raw.length >= PAGE_SIZE && page < 40 };
+  return { jobs: sortNewestFirst(applyFilters(raw, { type, remote, company })), hasMore: raw.length >= PAGE_SIZE && page < 40 };
 }
 
 async function details(id) {

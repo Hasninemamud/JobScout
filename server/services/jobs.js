@@ -7,20 +7,22 @@ const providers = {
   demo: require("../providers/demo"),
   scrape: require("../providers/linkedinScrape"),
   bdjobs: require("../providers/bdjobs"),
+  remote: require("../providers/remote"),
 };
 
-// LinkedIn + bdjobs together. One failing site must not hide the other's jobs.
+// LinkedIn + bdjobs + the remote job boards together. One failing site must not hide the other's jobs.
 providers.all = {
   async search(query) {
-    const parts = await Promise.allSettled([providers.scrape.search(query), providers.bdjobs.search(query)]);
+    const parts = await Promise.allSettled([providers.scrape, providers.bdjobs, providers.remote].map((p) => p.search(query)));
     const ok = parts.filter((p) => p.status === "fulfilled").map((p) => p.value);
     if (!ok.length) throw parts[0].reason;
-    return { jobs: sortNewestFirst(ok.flatMap((r) => r.jobs)), hasMore: ok.some((r) => r.hasMore), partial: ok.length < parts.length };
+    return { jobs: sortNewestFirst(ok.flatMap((r) => r.jobs)), hasMore: ok.some((r) => r.hasMore), partial: ok.length < parts.length || ok.some((r) => r.partial) };
   },
 };
 
 const TYPES = ["full-time", "part-time", "contract", "internship", "temporary"];
 const cache = new TTLCache(config.cacheTtlMs);
+const partialCache = new TTLCache(30_000); // half-failed searches: short, so a throttled site is not asked again on every click
 const detailCache = new TTLCache(60 * 60 * 1000, 500); // job descriptions rarely change
 const inflightSearches = new Map(); // concurrent identical requests share one upstream call
 const inflightDetails = new Map();
@@ -40,10 +42,12 @@ const clamp = (v, min, max, d) => {
 // Validate and normalise query-string input.
 function parseQuery(sp) {
   const position = clean(sp.get("position"), 100);
-  if (!position) throw new HttpError(400, "Please enter a position to search for.");
+  const company = clean(sp.get("company"), 100);
+  if (!position && !company) throw new HttpError(400, "Please enter a position or company to search for.");
   const type = clean(sp.get("type"), 20).toLowerCase();
   return {
     position,
+    company,
     location: clean(sp.get("location"), 100),
     type: TYPES.includes(type) ? type : "",
     remote: ["1", "true"].includes(sp.get("remote")),
@@ -56,13 +60,13 @@ function parseQuery(sp) {
 async function search(query) {
   const source = config.source;
   const key = source + JSON.stringify(query);
-  const cached = cache.get(key);
+  const cached = cache.get(key) || partialCache.get(key);
   if (cached) return cached;
 
   return dedupe(inflightSearches, key, async () => {
     const { jobs, hasMore, partial } = await providers[source].search(query);
     const result = { source, demo: source === "demo", page: query.page, hasMore, jobs, ...(partial && { partial }) };
-    if (!partial) cache.set(key, result); // a half-failed search must not hide a site for the whole TTL
+    (partial ? partialCache : cache).set(key, result); // a half-failed search must not hide a site for the whole TTL
     return result;
   });
 }

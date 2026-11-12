@@ -6,11 +6,11 @@ import { Reveal } from "@/shared/components/Reveal";
 const FAQS = [
   {
     q: "Where do the jobs come from?",
-    a: "From LinkedIn's and bdjobs.com's public job pages together, or from a licensed data API when one is configured. Every card links back to the original posting.",
+    a: "From LinkedIn, bdjobs.com and the remote boards Remotive, RemoteOK, We Work Remotely and Himalayas, together, or from a licensed data API when one is configured. Every card links back to the original posting.",
   },
   {
     q: "How fresh are the results?",
-    a: "The “Past hour” filter shows roles reported as posted in the last 60 minutes. Posted times on each card come from the site the job is on.",
+    a: "The “Past hour” filter shows roles reported as posted in the last 60 minutes. Posted times on each card come from the site the job is on. Remotive shows jobs about a day after they are posted.",
   },
   {
     q: "Why do job type and remote filters sometimes miss jobs?",
@@ -22,7 +22,7 @@ const FAQS = [
   },
   {
     q: "Why does it sometimes say a site is throttling requests?",
-    a: "LinkedIn and bdjobs limit how quickly their public pages can be read. Wait a minute and press “Try again”. Searches are cached for a few minutes to keep requests low.",
+    a: "Job sites limit how quickly their public pages can be read. Wait a minute and press “Try again”. Searches are cached for a few minutes to keep requests low.",
   },
 ];
 

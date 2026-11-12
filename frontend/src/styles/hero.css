@@ -65,7 +65,7 @@
 /* Search panel */
 .hero-panel-wrap { margin-top: 56px; }
 .panel { padding: 24px; border: 1px solid var(--ink-line); border-radius: 26px; background: var(--ink-2); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); }
-.panel-form { display: grid; grid-template-columns: 1.3fr 1fr 0.8fr auto; align-items: end; gap: 18px; }
+.panel-form { display: grid; grid-template-columns: 1.3fr 1fr 1fr 0.8fr auto; align-items: end; gap: 18px; }
 .panel-field { display: grid; gap: 10px; min-width: 0; }
 .panel-label { font-size: 0.74rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-on-dark); }
 .panel-control {

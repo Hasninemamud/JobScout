@@ -6,7 +6,7 @@ import { Reveal } from "@/shared/components/Reveal";
 const FEATURES: { icon: ReactNode; title: string; text: string }[] = [
   {
     icon: <BoltIcon size={22} />,
-    title: "Fresh from LinkedIn and bdjobs",
+    title: "Fresh from the source",
     text: "See postings from the last 60 minutes, 24 hours or week, using the posted times each site itself reports.",
   },
   {
@@ -30,7 +30,7 @@ export function WhySection() {
           <h2 className="display section-title section-title--light">Built for fast, focused job hunting</h2>
           <p>
             Most job boards bury new postings under old ones. JobScout puts the newest roles first and sends you
-            straight to the original LinkedIn or bdjobs post, so you can apply while the posting is still fresh.
+            straight to the original post, so you can apply while the posting is still fresh.
           </p>
         </Reveal>
 

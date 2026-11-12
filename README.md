@@ -26,7 +26,8 @@ Other scripts: `npm test` (backend tests), `npm run typecheck` (frontend).
 
 | Source | What it is | Notes |
 | --- | --- | --- |
-| `all` (default with no key) | LinkedIn + bdjobs merged, newest first | If one site fails, the other still shows. |
+| `all` (default with no key) | LinkedIn + bdjobs + remote boards merged, newest first | If one site fails, the other still shows. |
+| `remote` | Remotive, RemoteOK, We Work Remotely, Himalayas (public feeds) | Remote jobs only. Cards link back to the source. |
 | `scrape` | Reads LinkedIn's public, signed-out job pages | No key needed. |
 | `api` (default if `RAPIDAPI_KEY` is set) | Licensed provider on RapidAPI | Stable and permitted; paid/limited. |
 | `bdjobs` | bdjobs.com's public JSON (undocumented) | No key. Link and full details per job. Location/date/type filters applied per page by this app. |
@@ -99,7 +100,7 @@ spring modal (bottom sheet on phones), and a scrolling marquee. `MotionConfig re
 
 ## API
 
-`GET /api/jobs?position=…` with optional `location`, `type` (full-time|part-time|contract|internship|temporary),
+`GET /api/jobs?position=…` (or `company=…` alone) with optional `company`, `location`, `type` (full-time|part-time|contract|internship|temporary),
 `remote=1`, `posted` (1h|24h|7d|30d), `page`, `limit` (max 25).
 Also `GET /api/jobs/:id/details` (scrape source) returns the full description.
 Returns `{ source, demo, page, hasMore, jobs: [{ id, title, company, location, remote, type, postedAt, description, url, logo }] }`.

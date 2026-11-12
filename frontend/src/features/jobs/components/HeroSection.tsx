@@ -35,7 +35,7 @@ export function HeroSection({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.55, duration: 0.6 }}
             >
-              Search any position and see the newest LinkedIn and bdjobs postings, from the last hour to the last 30 days, with
+              Search any position and see the newest postings from LinkedIn, bdjobs and top remote job boards, from the last hour to the last 30 days, with
               full details and a direct link to apply.
             </motion.p>
           </div>

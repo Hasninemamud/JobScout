@@ -18,4 +18,16 @@ function matchesType(job, type) {
   return type === "full-time" ? !impliesOtherType(job.title) : TYPE_RULES[type].re.test(job.title);
 }
 
-module.exports = { TYPE_RULES, REMOTE_RE, matchesType };
+/** True if the job's company contains the searched name (case-insensitive). No company searched: everything matches. */
+const matchesCompany = (job, company) => !company || job.company.toLowerCase().includes(company.toLowerCase());
+
+/** True if every word of the search appears in the job title (for sites whose own search matches ANY word). */
+const matchesPosition = (job, position) => {
+  const title = job.title.toLowerCase();
+  return position.toLowerCase().split(/\s+/).filter(Boolean).every((w) => title.includes(w));
+};
+
+/** Milliseconds for each "posted within" option. */
+const WINDOW_MS = { "1h": 36e5, "24h": 864e5, "7d": 6048e5, "30d": 2592e6 };
+
+module.exports = { TYPE_RULES, REMOTE_RE, WINDOW_MS, matchesType, matchesCompany, matchesPosition };

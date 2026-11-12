@@ -22,8 +22,9 @@ export function SiteFooter() {
           ))}
         </nav>
         <p className="footer-note">
-          Job details come from LinkedIn&rsquo;s and bdjobs&rsquo; public pages or a data API and always link back to the
-          original posting. JobScout is not affiliated with LinkedIn or bdjobs.
+          Job details come from the public pages and feeds of LinkedIn, bdjobs, Remotive, RemoteOK, We Work Remotely and
+          Himalayas, or a data API, and always link back to the original posting. JobScout is not affiliated with any of
+          them.
         </p>
       </div>
     </footer>

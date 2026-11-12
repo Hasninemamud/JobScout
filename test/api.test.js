@@ -285,10 +285,12 @@ test("bdjobs provider maps search and details, applying the filters bdjobs ignor
   const row = (id, title, location, publishDate) => ({ Jobid: id, jobTitle: title, companyName: "Acme", location, publishDate, JobType: "FullTime", logoUrl: "" });
   global.fetch = async (url) => ({
     ok: true,
-    json: async () =>
-      String(url).includes("jobDetails")
-        ? { data: { JobFound: true, JobTitle: "Dev", JobDescription: "<p>Build things</p>", Deadline: "Dec 1, 2026", JobNature: "Full Time" } }
-        : { data: [row("1", "Dev", "Dhaka", now), row("2", "Old Dev", "Dhaka", old), row("3", "Dev", "Sylhet", now)], common: { totalpages: 3 } },
+    text: async () =>
+      JSON.stringify(
+        String(url).includes("jobDetails")
+          ? { data: { JobFound: true, JobTitle: "Dev", JobDescription: "<p>Build things</p>", Deadline: "Dec 1, 2026", JobNature: "Full Time" } }
+          : { data: [row("1", "Dev", "Dhaka", now), row("2", "Old Dev", "Dhaka", old), row("3", "Dev", "Sylhet", now)], common: { totalpages: 3 } },
+      ),
   });
   try {
     const q = { position: "dev", location: "dhaka", type: "", remote: false, posted: "7d", page: 1, limit: 12 };
@@ -304,7 +306,7 @@ test("bdjobs provider maps search and details, applying the filters bdjobs ignor
   }
 });
 
-test("all-source search survives one site failing and does not cache the partial result", async () => {
+test("all-source search survives one site failing and caches that partial result only briefly", async () => {
   const jobsService = require("../server/services/jobs");
   const real = global.fetch;
   const now = new Date().toISOString();
@@ -312,17 +314,18 @@ test("all-source search survives one site failing and does not cache the partial
   global.fetch = async (url) => {
     calls++;
     if (String(url).includes("linkedin.com")) throw new Error("down");
-    return { ok: true, json: async () => ({ data: [{ Jobid: "9", jobTitle: "Dev", companyName: "Acme", location: "Dhaka", publishDate: now, JobType: "FullTime" }], common: { totalpages: 1 } }) };
+    return { ok: true, text: async () => JSON.stringify({ data: [{ Jobid: "9", jobTitle: "Dev", companyName: "Acme", location: "Dhaka", publishDate: now, JobType: "FullTime" }], common: { totalpages: 1 } }) };
   };
   process.env.JOB_SOURCE = "all";
   try {
-    const q = jobsService.parseQuery(new URLSearchParams("position=partial-test&location=bangladesh"));
+    const q = jobsService.parseQuery(new URLSearchParams("position=dev&location=bangladesh"));
     const first = await jobsService.search(q);
     assert.deepEqual(first.jobs.map((j) => j.id), ["bd-9"]); // bdjobs kept; "bangladesh" matches the town "Dhaka"
     assert.equal(first.partial, true);
+    // A partial result is kept only briefly (so a throttled site isn't hit on every click), but it is kept.
     const before = calls;
-    await jobsService.search(q);
-    assert.ok(calls > before, "partial result must not be served from cache");
+    assert.equal((await jobsService.search(q)).partial, true);
+    assert.equal(calls, before, "repeat within the short window must not call the sites again");
   } finally {
     process.env.JOB_SOURCE = "demo";
     global.fetch = real;
@@ -337,7 +340,7 @@ test("bd- details ids are only served when bdjobs is a source", async () => {
 test("bdjobs details hide '--' placeholders", async () => {
   const bd = require("../server/providers/bdjobs");
   const real = global.fetch;
-  global.fetch = async () => ({ ok: true, json: async () => ({ data: { JobFound: true, JobTitle: "Dev", JobDescription: "<p>x</p>", JobVacancies: "--", Deadline: "Dec 1, 2026" } }) });
+  global.fetch = async () => ({ ok: true, text: async () => JSON.stringify({ data: { JobFound: true, JobTitle: "Dev", JobDescription: "<p>x</p>", JobVacancies: "--", Deadline: "Dec 1, 2026" } }) });
   try {
     const { description } = await bd.details("1");
     assert.doesNotMatch(description, /Vacancies/);
@@ -351,4 +354,104 @@ test("posted=30d is accepted and keeps older jobs that 7d drops", async () => {
   const { jobs: month } = (await get("/api/jobs?position=designer&posted=30d&limit=25")).body;
   const { jobs: week } = (await get("/api/jobs?position=designer&posted=7d&limit=25")).body;
   assert.ok(month.length >= week.length);
+});
+
+test("company search: allowed without a position, and results are limited to that company", async () => {
+  const jobsService = require("../server/services/jobs");
+  assert.equal(jobsService.parseQuery(new URLSearchParams("company=Acme")).company, "Acme");
+  assert.throws(() => jobsService.parseQuery(new URLSearchParams("location=x")), /position or company/);
+
+  const rows = [
+    { Jobid: "1", jobTitle: "Dev", companyName: "Acme Ltd", location: "Dhaka", publishDate: new Date().toISOString() },
+    { Jobid: "2", jobTitle: "Dev", companyName: "Other Co", location: "Dhaka", publishDate: new Date().toISOString() },
+  ];
+  const real = global.fetch;
+  let url;
+  global.fetch = async (u) => ((url = String(u)), { ok: true, text: async () => JSON.stringify({ data: rows, common: { totalpages: 1 } }) });
+  try {
+    const { jobs } = await require("../server/providers/bdjobs").search({ position: "", company: "acme", location: "", type: "", remote: false, posted: "7d", page: 1, limit: 12 });
+    assert.deepEqual(jobs.map((j) => j.id), ["bd-1"]);
+    assert.match(url, /keyword=acme/); // company is what bdjobs is asked to search
+  } finally {
+    global.fetch = real;
+  }
+  const li = scrape.applyFilters([{ title: "Dev", company: "Acme Ltd", location: "" }, { title: "Dev", company: "Other", location: "" }], { company: "ACME" });
+  assert.equal(li.length, 1);
+});
+
+test("bdjobs drops jobs whose title lacks a searched word", async () => {
+  const now = new Date().toISOString();
+  const row = (id, jobTitle) => ({ Jobid: id, jobTitle, companyName: "Acme", location: "Dhaka", publishDate: now });
+  const real = global.fetch;
+  global.fetch = async () => ({ ok: true, text: async () => JSON.stringify({ data: [row("1", "Senior Product Manager"), row("2", "Brand Promotion Manager"), row("3", "Product Designer")], common: { totalpages: 1 } }) });
+  try {
+    const { jobs } = await require("../server/providers/bdjobs").search({ position: "Product Manager", company: "", location: "", type: "", remote: false, posted: "7d", page: 1, limit: 12 });
+    assert.deepEqual(jobs.map((j) => j.id), ["bd-1"]);
+  } finally {
+    global.fetch = real;
+  }
+});
+
+test("remote boards: parsers map each feed, search merges and filters, feeds are fetched once", async () => {
+  delete require.cache[require.resolve("../server/providers/remote")];
+  const remote = require("../server/providers/remote");
+  const now = new Date();
+  const rss = (title, region) => `<item><title>${title}</title><region>${region}</region><type>Full-Time</type><description>&lt;p&gt;Build &amp;amp; ship&lt;/p&gt;</description><pubDate>${now.toUTCString()}</pubDate><link>https://weworkremotely.com/remote-jobs/x</link></item>`;
+  const real = global.fetch;
+  const hits = {};
+  global.fetch = async (u) => {
+    const host = new URL(u).host;
+    hits[host] = (hits[host] || 0) + 1;
+    const body = {
+      "remotive.com": { jobs: [
+        { title: "React Developer", company_name: "A", candidate_required_location: "USA", job_type: "full_time", publication_date: now.toISOString().slice(0, 19), url: "https://remotive.com/remote-jobs/1", description: "<p>x</p>" },
+        { title: "Vue Developer", company_name: "A", candidate_required_location: "Europe", job_type: "full_time", publication_date: now.toISOString().slice(0, 19), url: "https://remotive.com/remote-jobs/4", description: "<p>x</p>" },
+      ] },
+      "remoteok.com": [{ legal: "x" }, { position: "Rust Developer", company: "B", date: now.toISOString(), url: "https://remoteOK.com/remote-jobs/2", description: "y" }],
+      "himalayas.app": { totalCount: 1, jobs: [{ title: "Unrelated Chef", companyName: "C", pubDate: Math.floor(now / 1000), applicationLink: "https://himalayas.app/jobs/3" }] },
+    }[host];
+    return host === "weworkremotely.com"
+      ? { ok: true, text: async () => `<rss>${rss("Acme: Senior Developer", "Worldwide")}${rss("Acme: Barista", "Worldwide")}</rss>` }
+      : { ok: true, text: async () => JSON.stringify(body) };
+  };
+  try {
+    const q = { position: "developer", company: "", location: "", type: "", remote: false, posted: "7d", page: 1, limit: 12 };
+    const { jobs, partial } = await remote.search(q);
+    assert.deepEqual(jobs.map((j) => j.title).sort(), ["React Developer", "Rust Developer", "Senior Developer", "Vue Developer"]); // "Chef"/"Barista" dropped
+    assert.ok(!partial);
+    const wwr = jobs.find((j) => j.title === "Senior Developer");
+    assert.equal(wwr.company, "Acme");
+    assert.equal(wwr.description, "Build & ship"); // entities decoded, tags stripped
+    // Location "usa" keeps the USA job and open-worldwide ones, and drops the Europe-only job.
+    const usa = await remote.search({ ...q, location: "usa" });
+    assert.deepEqual(usa.jobs.map((j) => j.title).sort(), ["React Developer", "Rust Developer", "Senior Developer"]);
+    assert.equal(hits["remotive.com"], 1);
+    assert.equal(hits["remoteok.com"], 1); // cached feeds are not refetched
+  } finally {
+    global.fetch = real;
+  }
+});
+
+test("a partial result from the remote boards marks the whole all-source search partial", async () => {
+  const jobsService = require("../server/services/jobs");
+  const real = global.fetch;
+  global.fetch = async (url) => {
+    const host = new URL(url).host;
+    if (host === "himalayas.app") throw new Error("down"); // one remote site fails, the rest answer with empty feeds
+    return { ok: true, text: async () => (host === "weworkremotely.com" ? "<rss></rss>" : host === "api.bdjobs.com" ? '{"data":[],"common":{"totalpages":0}}' : "[]") };
+  };
+  process.env.JOB_SOURCE = "all";
+  try {
+    const q = jobsService.parseQuery(new URLSearchParams("position=partial-remote-check"));
+    assert.equal((await jobsService.search(q)).partial, true);
+  } finally {
+    process.env.JOB_SOURCE = "demo";
+    global.fetch = real;
+  }
+});
+
+test("large JSON responses are gzipped when the client accepts it", async () => {
+  const res = await fetch(`${base}/api/jobs?position=designer&limit=25`, { headers: { "accept-encoding": "gzip" } });
+  assert.equal(res.headers.get("content-encoding"), "gzip");
+  assert.ok((await res.json()).jobs.length > 0); // fetch decompresses it transparently
 });

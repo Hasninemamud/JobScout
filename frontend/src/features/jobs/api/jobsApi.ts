@@ -21,6 +21,7 @@ async function getJson<T>(url: string, signal?: AbortSignal, friendly: Record<nu
 export function fetchJobsPage(filters: SearchFilters, page: number, signal?: AbortSignal) {
   const qs = new URLSearchParams({
     position: filters.position,
+    company: filters.company,
     location: filters.location,
     posted: filters.posted,
     type: filters.type,

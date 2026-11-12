@@ -10,6 +10,7 @@ function readFiltersFromUrl(): SearchFilters {
   const type = q.get("type");
   return {
     position: (q.get("position") ?? "").trim().slice(0, 100),
+    company: (q.get("company") ?? "").trim().slice(0, 100),
     location: (q.get("location") ?? "").trim().slice(0, 100),
     posted: POSTED_OPTIONS.find((o) => o.value === posted)?.value ?? DEFAULT_FILTERS.posted,
     type: TYPE_OPTIONS.find((o) => o.value === type)?.value ?? "",
@@ -19,8 +20,9 @@ function readFiltersFromUrl(): SearchFilters {
 
 function writeFiltersToUrl(f: SearchFilters) {
   const qs = new URLSearchParams();
-  if (f.position) {
-    qs.set("position", f.position);
+  if (f.position || f.company) {
+    if (f.position) qs.set("position", f.position);
+    if (f.company) qs.set("company", f.company);
     if (f.location) qs.set("location", f.location);
     if (f.posted !== DEFAULT_FILTERS.posted) qs.set("posted", f.posted);
     if (f.type) qs.set("type", f.type);
@@ -41,14 +43,15 @@ export function useSearchFilters() {
 
   const updateDraft = useCallback((patch: Partial<SearchFilters>) => setDraft((d) => ({ ...d, ...patch })), []);
 
-  /** Runs a search. Returns false when there is no position to search for. */
+  /** Runs a search. Returns false when there is no position or company to search for. */
   const submit = useCallback(
     (patch: Partial<SearchFilters> = {}) => {
       const next = { ...draft, ...patch };
       next.position = next.position.trim();
+      next.company = next.company.trim();
       next.location = next.location.trim();
       setDraft(next);
-      if (!next.position) return false;
+      if (!next.position && !next.company) return false;
       setActive(next);
       return true;
     },
@@ -59,7 +62,7 @@ export function useSearchFilters() {
   const setFilter = useCallback(
     <K extends "posted" | "type" | "remote">(key: K, value: SearchFilters[K]) => {
       setDraft((d) => ({ ...d, [key]: value }));
-      setActive((a) => (a.position ? { ...a, [key]: value } : a));
+      setActive((a) => (a.position || a.company ? { ...a, [key]: value } : a));
     },
     [],
   );

@@ -87,6 +87,9 @@
 .job-card-foot .btn { min-width: 0; }
 
 .load-more { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 40px; }
+.pagination { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 40px; }
+.pagination-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pagination-num { min-width: 40px; padding: 0 12px; }
 .load-more-error { max-width: 52ch; padding: 10px 18px; border-radius: 14px; background: rgba(242, 106, 27, 0.12); color: #a2400a; font-size: 0.9rem; font-weight: 600; text-align: center; }
 
 /* ---------- Empty / error ---------- */

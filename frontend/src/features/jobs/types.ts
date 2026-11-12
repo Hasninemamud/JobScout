@@ -1,9 +1,10 @@
 export type PostedWindow = "1h" | "24h" | "7d" | "30d";
 export type JobType = "" | "full-time" | "part-time" | "contract" | "internship" | "temporary";
-type JobSource = "scrape" | "api" | "demo" | "bdjobs" | "all";
+type JobSource = "scrape" | "api" | "demo" | "bdjobs" | "remote" | "all";
 
 export interface SearchFilters {
   position: string;
+  company: string;
   location: string;
   posted: PostedWindow;
   type: JobType;
@@ -45,6 +46,7 @@ export interface JobDetails {
 
 export const DEFAULT_FILTERS: SearchFilters = {
   position: "",
+  company: "",
   location: "",
   posted: "7d",
   type: "",
