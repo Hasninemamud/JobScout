@@ -11,9 +11,12 @@ const providers = {
 };
 
 // LinkedIn + bdjobs + the remote job boards together. One failing site must not hide the other's jobs.
+const SITE_PROVIDER = { linkedin: "scrape", bdjobs: "bdjobs", remote: "remote" }; // other sites are single remote boards
+const SITES = [...Object.keys(SITE_PROVIDER), "remotive", "remoteok", "weworkremotely", "himalayas"];
 providers.all = {
   async search(query) {
-    const parts = await Promise.allSettled([providers.scrape, providers.bdjobs, providers.remote].map((p) => p.search(query)));
+    const chosen = query.site ? [providers[SITE_PROVIDER[query.site] || "remote"]] : [providers.scrape, providers.bdjobs, providers.remote];
+    const parts = await Promise.allSettled(chosen.map((p) => p.search(query)));
     const ok = parts.filter((p) => p.status === "fulfilled").map((p) => p.value);
     if (!ok.length) throw parts[0].reason;
     return { jobs: sortNewestFirst(ok.flatMap((r) => r.jobs)), hasMore: ok.some((r) => r.hasMore), partial: ok.length < parts.length || ok.some((r) => r.partial) };
@@ -48,6 +51,7 @@ function parseQuery(sp) {
   return {
     position,
     company,
+    site: SITES.includes(sp.get("site")) ? sp.get("site") : "", // only used when several sites are searched together
     location: clean(sp.get("location"), 100),
     type: TYPES.includes(type) ? type : "",
     remote: ["1", "true"].includes(sp.get("remote")),

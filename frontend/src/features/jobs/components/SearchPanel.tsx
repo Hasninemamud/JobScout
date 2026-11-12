@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { motion } from "framer-motion";
 import { ChevronDownIcon, SearchIcon } from "@/shared/components/Icons";
-import { POSTED_OPTIONS, TYPE_OPTIONS, type JobType, type PostedWindow, type SearchFilters } from "../types";
+import { POSTED_OPTIONS, SITE_OPTIONS, TYPE_OPTIONS, type JobType, type PostedWindow, type SearchFilters, type SiteFilter } from "../types";
 
 const SUGGESTED = ["Software Engineer", "Product Manager", "Data Analyst", "UX Designer", "Marketing Manager"];
 
@@ -10,7 +10,7 @@ interface SearchPanelProps {
   isSearching: boolean;
   recent: string[];
   onChange: (patch: Partial<SearchFilters>) => void;
-  onFilter: <K extends "posted" | "type" | "remote">(key: K, value: SearchFilters[K]) => void;
+  onFilter: <K extends "posted" | "type" | "remote" | "site">(key: K, value: SearchFilters[K]) => void;
   onSubmit: () => void;
   onPick: (position: string) => void;
 }
@@ -95,6 +95,16 @@ export function SearchPanel({ draft, isSearching, recent, onChange, onFilter, on
       </form>
 
       <div className="panel-extras">
+        <label className="mini-select">
+          <span className="sr-only">Job site</span>
+          <select value={draft.site} onChange={(e) => onFilter("site", e.target.value as SiteFilter)}>
+            {SITE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <ChevronDownIcon size={16} />
+        </label>
+
         <label className="mini-select">
           <span className="sr-only">Job type</span>
           <select value={draft.type} onChange={(e) => onFilter("type", e.target.value as JobType)}>

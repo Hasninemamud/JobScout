@@ -455,3 +455,27 @@ test("large JSON responses are gzipped when the client accepts it", async () => 
   assert.equal(res.headers.get("content-encoding"), "gzip");
   assert.ok((await res.json()).jobs.length > 0); // fetch decompresses it transparently
 });
+
+test("site option limits an all-source search to the chosen site", async () => {
+  const jobsService = require("../server/services/jobs");
+  assert.equal(jobsService.parseQuery(new URLSearchParams("position=x&site=remotive")).site, "remotive");
+  assert.equal(jobsService.parseQuery(new URLSearchParams("position=x&site=bogus")).site, ""); // unknown values mean "all sites"
+
+  const real = global.fetch;
+  const hosts = new Set();
+  global.fetch = async (u) => {
+    hosts.add(new URL(u).host);
+    return { ok: true, text: async () => "[]" };
+  };
+  process.env.JOB_SOURCE = "all";
+  try {
+    await jobsService.search(jobsService.parseQuery(new URLSearchParams("position=site-check-a&site=himalayas")));
+    assert.deepEqual([...hosts], ["himalayas.app"]); // nothing else was asked
+    hosts.clear();
+    await jobsService.search(jobsService.parseQuery(new URLSearchParams("position=site-check-b&site=bdjobs")));
+    assert.deepEqual([...hosts], ["api.bdjobs.com"]);
+  } finally {
+    process.env.JOB_SOURCE = "demo";
+    global.fetch = real;
+  }
+});

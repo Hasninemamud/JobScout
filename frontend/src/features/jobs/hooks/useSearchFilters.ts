@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { DEFAULT_FILTERS, POSTED_OPTIONS, TYPE_OPTIONS, type SearchFilters } from "../types";
+import { DEFAULT_FILTERS, POSTED_OPTIONS, SITE_OPTIONS, TYPE_OPTIONS, type SearchFilters } from "../types";
 
 function readFiltersFromUrl(): SearchFilters {
   // A refresh starts clean; opening a shared link or using back/forward still restores the search.
@@ -15,6 +15,7 @@ function readFiltersFromUrl(): SearchFilters {
     posted: POSTED_OPTIONS.find((o) => o.value === posted)?.value ?? DEFAULT_FILTERS.posted,
     type: TYPE_OPTIONS.find((o) => o.value === type)?.value ?? "",
     remote: q.get("remote") === "1",
+    site: SITE_OPTIONS.find((o) => o.value === q.get("site"))?.value ?? "",
   };
 }
 
@@ -27,6 +28,7 @@ function writeFiltersToUrl(f: SearchFilters) {
     if (f.posted !== DEFAULT_FILTERS.posted) qs.set("posted", f.posted);
     if (f.type) qs.set("type", f.type);
     if (f.remote) qs.set("remote", "1");
+    if (f.site) qs.set("site", f.site);
   }
   window.history.replaceState(null, "", qs.size ? `?${qs}` : window.location.pathname);
 }
@@ -60,7 +62,7 @@ export function useSearchFilters() {
 
   /** Filter chips apply instantly once a search exists; before that they just prepare the next search. */
   const setFilter = useCallback(
-    <K extends "posted" | "type" | "remote">(key: K, value: SearchFilters[K]) => {
+    <K extends "posted" | "type" | "remote" | "site">(key: K, value: SearchFilters[K]) => {
       setDraft((d) => ({ ...d, [key]: value }));
       setActive((a) => (a.position || a.company ? { ...a, [key]: value } : a));
     },

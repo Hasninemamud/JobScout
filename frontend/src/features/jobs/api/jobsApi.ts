@@ -29,6 +29,7 @@ export function fetchJobsPage(filters: SearchFilters, page: number, signal?: Abo
     limit: String(PAGE_SIZE),
   });
   if (filters.remote) qs.set("remote", "1");
+  if (filters.site) qs.set("site", filters.site);
   return getJson<JobsPage>(`/api/jobs?${qs}`, signal);
 }
 

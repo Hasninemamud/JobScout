@@ -77,9 +77,9 @@ function parseWeWorkRemotely(xml) {
 // ---------- sites ----------
 // Whole-feed sites: fetched once per TTL, then filtered and paged here.
 const FEEDS = [
-  { name: "Remotive", ttl: 6 * 36e5, load: async () => parseRemotive(await getJson("https://remotive.com/api/remote-jobs", "Remotive")) },
-  { name: "RemoteOK", ttl: 30 * 6e4, load: async () => parseRemoteOk(await getJson("https://remoteok.com/api", "RemoteOK")) },
-  { name: "We Work Remotely", ttl: 30 * 6e4, load: async () => parseWeWorkRemotely(await getText("https://weworkremotely.com/remote-jobs.rss", "We Work Remotely")) },
+  { key: "remotive", name: "Remotive", ttl: 6 * 36e5, load: async () => parseRemotive(await getJson("https://remotive.com/api/remote-jobs", "Remotive")) },
+  { key: "remoteok", name: "RemoteOK", ttl: 30 * 6e4, load: async () => parseRemoteOk(await getJson("https://remoteok.com/api", "RemoteOK")) },
+  { key: "weworkremotely", name: "We Work Remotely", ttl: 30 * 6e4, load: async () => parseWeWorkRemotely(await getText("https://weworkremotely.com/remote-jobs.rss", "We Work Remotely")) },
 ];
 
 function fits(j, { position, company, location, type, posted }) {
@@ -112,7 +112,12 @@ async function searchHimalayas(q) {
 }
 
 async function search(q) {
-  const parts = await Promise.allSettled([...FEEDS.map((f) => searchFeed(f, q)), searchHimalayas(q)]);
+  // q.site is "" or "remote" for every board, or the key of one board.
+  const want = (key) => !q.site || q.site === "remote" || q.site === key;
+  const parts = await Promise.allSettled([
+    ...FEEDS.filter((f) => want(f.key)).map((f) => searchFeed(f, q)),
+    ...(want("himalayas") ? [searchHimalayas(q)] : []),
+  ]);
   const ok = parts.filter((p) => p.status === "fulfilled").map((p) => p.value);
   if (!ok.length) throw parts[0].reason;
   return {

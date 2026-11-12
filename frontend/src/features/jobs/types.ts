@@ -2,6 +2,8 @@ export type PostedWindow = "1h" | "24h" | "7d" | "30d";
 export type JobType = "" | "full-time" | "part-time" | "contract" | "internship" | "temporary";
 type JobSource = "scrape" | "api" | "demo" | "bdjobs" | "remote" | "all";
 
+export type SiteFilter = "" | "linkedin" | "bdjobs" | "remote" | "remotive" | "remoteok" | "weworkremotely" | "himalayas";
+
 export interface SearchFilters {
   position: string;
   company: string;
@@ -9,6 +11,7 @@ export interface SearchFilters {
   posted: PostedWindow;
   type: JobType;
   remote: boolean;
+  site: SiteFilter;
 }
 
 export interface Job {
@@ -51,6 +54,7 @@ export const DEFAULT_FILTERS: SearchFilters = {
   posted: "7d",
   type: "",
   remote: false,
+  site: "",
 };
 
 export const POSTED_OPTIONS: { value: PostedWindow; label: string }[] = [
@@ -58,6 +62,17 @@ export const POSTED_OPTIONS: { value: PostedWindow; label: string }[] = [
   { value: "24h", label: "24 hours" },
   { value: "7d", label: "Past week" },
   { value: "30d", label: "Past 30 days" },
+];
+
+export const SITE_OPTIONS: { value: SiteFilter; label: string }[] = [
+  { value: "", label: "All sites" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "bdjobs", label: "bdjobs" },
+  { value: "remote", label: "All remote boards" },
+  { value: "remotive", label: "Remotive" },
+  { value: "remoteok", label: "RemoteOK" },
+  { value: "weworkremotely", label: "We Work Remotely" },
+  { value: "himalayas", label: "Himalayas" },
 ];
 
 export const TYPE_OPTIONS: { value: JobType; label: string }[] = [
